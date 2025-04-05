@@ -1,13 +1,3 @@
-// ==UserScript==
-// @name         FreightHelper.js
-// @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Freight Automation Helper Module.
-// @match        https://www.logitycoon.com/eu1/index.php?a=freight*
-// @grant        GM_xmlhttpRequest
-// @connect      www.logitycoon.com
-// ==/UserScript==
-
 /**
  * @file FreightHelper.js
  *
@@ -20,42 +10,46 @@
  * @property {string} [id] - Freight identifier.
  * @property {Object} [details] - Key-value pairs of freight details.
  * @property {Object[]} [financialOverview] - Array of financial overview items.
- * @property {Object} [buttons] - Button info, where each key corresponds to a freight action.
+ * @property {Object} [buttons] - Contains an array of action buttons with their text and action attributes.
  */
+function extractFreightDetail(doc) {
+    const freightDetail = {};
 
-const FreightHelper = (function() {
+    // Extract freight id from the page title (e.g., "Freight #919")
+    const titleEl = doc.querySelector("h1.page-title");
+    if (titleEl) {
+        const idMatch = titleEl.textContent.match(/#(\d+)/);
+        if (idMatch) {
+            freightDetail.id = idMatch[1];
+        }
+    }
 
-    function extractFreightDetail(doc) {
-        const freightDetail = {};
-
-        // Extract freight id from the page title (e.g., "Freight #919")
-        const titleEl = doc.querySelector("h1.page-title");
-        if (titleEl) {
-            const idMatch = titleEl.textContent.match(/#(\d+)/);
-            if (idMatch) {
-                freightDetail.id = idMatch[1];
+    // Extract freight details from the "Freight Details" portlet.
+    // Find the portlet that includes "Freight Details" in its text.
+    let detailsPortlet = Array.from(doc.querySelectorAll("div.portlet")).find(el =>
+        el.textContent.includes("Freight Details")
+    );
+    const details = {};
+    if (detailsPortlet) {
+        detailsPortlet.querySelectorAll("div.row.static-info").forEach(row => {
+            const nameEl = row.querySelector("div.name");
+            const valueEl = row.querySelector("div.value");
+            if (nameEl && valueEl) {
+                const label = nameEl.textContent.replace(/[\n\r]+/g, " ").trim().replace(":", "");
+                const value = valueEl.textContent.replace(/[\n\r]+/g, " ").trim();
+                details[label] = value;
             }
-        }
+        });
+    }
+    freightDetail.details = details;
 
-        // Extract freight details from the "Freight Details" portlet.
-        const detailsPortlet = doc.querySelector("div.portlet.grey-salsa.box");
-        const details = {};
-        if (detailsPortlet) {
-            detailsPortlet.querySelectorAll("div.row.static-info").forEach(row => {
-                const nameEl = row.querySelector("div.name");
-                const valueEl = row.querySelector("div.value");
-                if (nameEl && valueEl) {
-                    const label = nameEl.textContent.replace(/[\n\r]+/g, " ").trim().replace(":", "");
-                    const value = valueEl.textContent.replace(/[\n\r]+/g, " ").trim();
-                    details[label] = value;
-                }
-            });
-        }
-        freightDetail.details = details;
-
-        // Extract financial overview from the "Financial Overview" table.
-        const financialOverview = [];
-        const finTable = doc.querySelector("div.portlet.grey-cascade.box table.table-bordered");
+    // Extract financial overview from the "Financial Overview" portlet.
+    let finPortlet = Array.from(doc.querySelectorAll("div.portlet")).find(el =>
+        el.textContent.includes("Financial Overview")
+    );
+    const financialOverview = [];
+    if (finPortlet) {
+        const finTable = finPortlet.querySelector("table.table-bordered");
         if (finTable) {
             finTable.querySelectorAll("tbody tr").forEach(row => {
                 const cells = row.querySelectorAll("td");
@@ -70,58 +64,22 @@ const FreightHelper = (function() {
                 }
             });
         }
-        freightDetail.financialOverview = financialOverview;
-
-        // Extract button functionalities.
-        const buttons = {};
-        const loadBtn = doc.querySelector("button#712851");
-        if (loadBtn) {
-            buttons.load = {
-                text: loadBtn.textContent.trim(),
-                onclick: loadBtn.getAttribute("onclick")
-            };
-        }
-        const cancelBtn = doc.querySelector("a[title^='Cancel Freight']");
-        if (cancelBtn) {
-            buttons.cancel = {
-                text: cancelBtn.textContent.trim(),
-                onclick: cancelBtn.getAttribute("data-successjs") || cancelBtn.getAttribute("onclick")
-            };
-        }
-        const empBtn = doc.querySelector("button[onclick*='freightautowhemployee853399']");
-        if (empBtn) {
-            buttons.employee = {
-                text: empBtn.textContent.trim(),
-                onclick: empBtn.getAttribute("onclick")
-            };
-        }
-        const truckBtn = doc.querySelector("a[href*='freight_truck&n=']");
-        if (truckBtn) {
-            buttons.truck = {
-                text: truckBtn.textContent.trim(),
-                href: truckBtn.getAttribute("href")
-            };
-        }
-        const trailerBtn = doc.querySelector("a[href*='freight_trailer&n=']");
-        if (trailerBtn) {
-            buttons.trailer = {
-                text: trailerBtn.textContent.trim(),
-                href: trailerBtn.getAttribute("href")
-            };
-        }
-        const speedupBtn = doc.querySelector("button[onclick*='freightspeedup']");
-        if (speedupBtn) {
-            buttons.speedup = {
-                text: speedupBtn.textContent.trim(),
-                onclick: speedupBtn.getAttribute("onclick")
-            };
-        }
-        freightDetail.buttons = buttons;
-
-        return freightDetail;
     }
+    freightDetail.financialOverview = financialOverview;
 
-    return {
-        extractFreightDetail
-    };
-})();
+    // Extract button functionalities by searching for elements with freight action attributes.
+    // We search for any element (button or link) with an onclick attribute containing "freight" or an href containing "freight".
+    const buttons = { actions: [] };
+    const actionElements = doc.querySelectorAll("[onclick*='freight'], a[href*='freight']");
+    actionElements.forEach(el => {
+        buttons.actions.push({
+            tag: el.tagName,
+            text: el.textContent.trim(),
+            onclick: el.getAttribute("onclick") || null,
+            href: el.getAttribute("href") || null
+        });
+    });
+    freightDetail.buttons = buttons;
+
+    return freightDetail;
+}
