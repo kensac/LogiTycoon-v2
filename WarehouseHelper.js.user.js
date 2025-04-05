@@ -1,140 +1,109 @@
 // ==UserScript==
-// @name         FreightHelper.js
+// @name         WarehouseHelper.js
 // @namespace    http://tampermonkey.net/
 // @version      1.0
-// @description  Freight Automation Helper Module.
-// @match        https://www.logitycoon.com/eu1/index.php?a=freight*
+// @description  Warehouse Automation Helper Module.
+// @match        https://www.logitycoon.com/eu1/index.php?a=warehouse*
 // @grant        GM_xmlhttpRequest
 // @connect      www.logitycoon.com
 // ==/UserScript==
 
 /**
- * @file FreightHelper.js
+ * @file WarehouseHelper.js
  *
  * @description
- *  Freight Automation Helper Module.
+ *  Warehouse Automation Helper Module.
  *
- * @function extractFreightDetail(doc: Document) : FreightDetail - Extracts all information from a freight detail page, including button actions.
- * @function pressFreightActionButtons() : void - Clicks any button with text "drive" first, then clicks the first button with text "load", "drive", "unload", and "finish".
+ * @function fetchWarehousePage() : void - Fetches the Warehouse page and extracts freight info.
+ * @function extractFreightInfo(doc: Document) : Freight[] - Extracts freight information from the Warehouse page.
  *
- * @typedef {Object} FreightDetail
- * @property {string} [id] - Freight identifier.
- * @property {Object} [details] - Key-value pairs of freight details.
- * @property {Object[]} [financialOverview] - Array of financial overview items.
- * @property {Object} [buttons] - Button info, where each key corresponds to a freight action.
+ * @typedef {Object} Freight
+ * @property {string} id
+ * @property {number} earnings
+ * @property {string} departure
+ * @property {string} destination
+ * @property {string} distance
+ * @property {string} tripType
  */
 
-const FreightHelper = (function() {
+const WarehouseHelper = (function() {
+    const config = {
+        baseUrl: "https://www.logitycoon.com/eu1/",
+        endpoints: {
+            warehousePage: "index.php?a=warehouse"
+        }
+    };
 
-    function extractFreightDetail(doc) {
-        const freightDetail = {};
-
-        // Extract freight id from the page title (e.g., "Freight #919")
-        const titleEl = doc.querySelector("h1.page-title");
-        if (titleEl) {
-            const idMatch = titleEl.textContent.match(/#(\d+)/);
-            if (idMatch) {
-                freightDetail.id = idMatch[1];
+    function fetchWarehousePage() {
+        const url = config.baseUrl + config.endpoints.warehousePage;
+        console.log("WarehouseHelper: Fetching warehouse page from", url);
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: url,
+            onload(response) {
+                const doc = new DOMParser().parseFromString(response.responseText, "text/html");
+                const freightInfo = extractFreightInfo(doc);
+                console.log("WarehouseHelper: Extracted freight info:", freightInfo);
+            },
+            onerror(err) {
+                console.error("WarehouseHelper: Error fetching warehouse page:", err);
             }
-        }
-
-        // Extract freight details from the "Freight Details" portlet.
-        const detailsPortlet = Array.from(doc.querySelectorAll("div.portlet")).find(el =>
-            el.textContent.includes("Freight Details")
-        );
-        const details = {};
-        if (detailsPortlet) {
-            detailsPortlet.querySelectorAll("div.row.static-info").forEach(row => {
-                const nameEl = row.querySelector("div.name");
-                const valueEl = row.querySelector("div.value");
-                if (nameEl && valueEl) {
-                    const label = nameEl.textContent.replace(/[\n\r]+/g, " ").trim().replace(":", "");
-                    const value = valueEl.textContent.replace(/[\n\r]+/g, " ").trim();
-                    details[label] = value;
-                }
-            });
-        }
-        freightDetail.details = details;
-
-        // Extract financial overview from the "Financial Overview" portlet.
-        const finPortlet = Array.from(doc.querySelectorAll("div.portlet")).find(el =>
-            el.textContent.includes("Financial Overview")
-        );
-        const financialOverview = [];
-        if (finPortlet) {
-            const finTable = finPortlet.querySelector("table.table-bordered");
-            if (finTable) {
-                finTable.querySelectorAll("tbody tr").forEach(row => {
-                    const cells = row.querySelectorAll("td");
-                    if (cells.length >= 5) {
-                        financialOverview.push({
-                            label: cells[0].textContent.trim(),
-                            status: cells[1].textContent.trim(),
-                            grossPrice: cells[2].textContent.trim(),
-                            quantity: cells[3].textContent.trim(),
-                            netTotal: cells[4].textContent.trim()
-                        });
-                    }
-                });
-            }
-        }
-        freightDetail.financialOverview = financialOverview;
-
-        // Extract button functionalities.
-        const buttons = {};
-        // Use jQuery to find any button or link that appears to trigger a freight action.
-        // This is a general approach; adjust selectors as necessary.
-        buttons.actions = [];
-        const actionElements = $("button, a").filter(function() {
-            const txt = $(this).text().trim().toLowerCase();
-            return txt.includes("freight") || txt.includes("load") || txt.includes("drive") || txt.includes("unload") || txt.includes("finish");
         });
-        actionElements.each(function() {
-            buttons.actions.push({
-                tag: this.tagName,
-                text: $(this).text().trim(),
-                onclick: $(this).attr("onclick") || null,
-                href: $(this).attr("href") || null
-            });
-        });
-        freightDetail.buttons = buttons;
-
-        return freightDetail;
     }
 
-    /**
-     * Presses any button with text "drive" first, then presses the first button whose text is
-     * one of "load", "drive", "unload", or "finish".
-     */
-    function pressFreightActionButtons() {
-        // First, press a button with text "drive" (case-insensitive).
-        const driveButton = $("button, a").filter(function() {
-            return $(this).text().trim().toLowerCase() === "drive";
-        }).first();
-        if (driveButton.length > 0) {
-            console.log("Pressing 'Drive' button");
-            driveButton.click();
-        } else {
-            console.log("No 'Drive' button found.");
+    function extractFreightInfo(doc) {
+        const freights = [];
+        const tbody = doc.querySelector("tbody#tbody-available");
+        if (!tbody) {
+            console.warn("WarehouseHelper: Freight table (tbody#tbody-available) not found.");
+            return freights;
         }
-
-        // Then, iterate over the list of actions.
-        const actions = ["load", "drive", "unload", "finish"];
-        actions.forEach(action => {
-            const btn = $("button, a").filter(function() {
-                return $(this).text().trim().toLowerCase() === action;
-            }).first();
-            if (btn.length > 0) {
-                console.log("Pressing '" + action + "' button");
-                btn.click();
-            } else {
-                console.log("No '" + action + "' button found.");
+        tbody.querySelectorAll("tr").forEach(row => {
+            const freight = {};
+            const cells = Array.from(row.children);
+            const idCell = cells.find(cell => cell.classList.contains("hidden-xs") && cell.textContent.trim().startsWith("#"));
+            if (idCell) {
+                freight.id = idCell.textContent.trim().replace("#", "");
             }
+            if (cells[1]) {
+                let earningsText = cells[1].textContent.trim().replace(/[\$,]/g, "");
+                freight.earnings = parseFloat(earningsText);
+            }
+            const visibleCells = cells.filter(cell => cell.classList.contains("visible-sm"));
+            if (visibleCells.length > 0) {
+                const departureCell = visibleCells[0];
+                const depImg = departureCell.querySelector("img");
+                if (depImg) depImg.remove();
+                freight.departure = departureCell.textContent.trim();
+            }
+            if (visibleCells.length > 1) {
+                const destinationCell = visibleCells[1];
+                const destImg = destinationCell.querySelector("img");
+                if (destImg) destImg.remove();
+                freight.destination = destinationCell.textContent.trim();
+            }
+            const distanceCell = cells.find(cell => cell.textContent.trim().endsWith("km"));
+            if (distanceCell) {
+                freight.distance = distanceCell.textContent.trim();
+            }
+            const typeCell = cells.find(cell => cell.classList.contains("hidden-xs") && cell.textContent.toLowerCase().includes("default"));
+            if (typeCell) {
+                const span = typeCell.querySelector("span");
+                if (span) {
+                    const img = span.querySelector("img");
+                    if (img) img.remove();
+                    freight.tripType = span.textContent.trim();
+                } else {
+                    freight.tripType = typeCell.textContent.trim();
+                }
+            }
+            freights.push(freight);
         });
+        return freights;
     }
 
     return {
-        extractFreightDetail,
-        pressFreightActionButtons
+        fetchWarehousePage,
+        extractFreightInfo
     };
 })();
