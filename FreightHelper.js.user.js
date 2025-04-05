@@ -148,7 +148,7 @@ const FreightHelper = (function () {
       }
 
       // Then, iterate over the list of actions.
-      const actions = ["load", "drive", "unload", "finish"];
+      const actions = ["load", "drive", "unload", "finish", "continue driving"];
       actions.forEach((action) => {
         const btn = $("button, a")
           .filter(function () {
