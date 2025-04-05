@@ -87,7 +87,7 @@ const FreightHelper = (function() {
         buttons.actions = [];
         const actionElements = $("button, a").filter(function() {
             const txt = $(this).text().trim().toLowerCase();
-            return txt.includes("freight") || txt.includes("load") || txt.includes("drive") || txt.includes("unload") || txt.includes("finish");
+            return txt.includes("freight") || txt.includes("load") || txt.includes("drive") || txt.includes("unload") || txt.includes("finish") || txt.includes("random");
         });
         actionElements.each(function() {
             buttons.actions.push({
@@ -107,16 +107,15 @@ const FreightHelper = (function() {
      * one of "load", "drive", "unload", or "finish".
      */
     function pressFreightActionButtons() {
-        // First, press a button with text "drive" (case-insensitive).
-        const driveButton = $("button, a").filter(function() {
-            return $(this).text().trim().toLowerCase() === "drive";
-        }).first();
-        if (driveButton.length > 0) {
-            console.log("Pressing 'Drive' button");
-            driveButton.click();
-        } else {
-            console.log("No 'Drive' button found.");
+        // first press all the random buttons
+        const randomButtons = $("button, a").filter(function() {
+            return $(this).text().trim().toLowerCase() === "random";
+        });
+        randomButtons.each(function() {
+            console.log("Pressing 'Random' button");
+            $(this).click();
         }
+        );
 
         // Then, iterate over the list of actions.
         const actions = ["load", "drive", "unload", "finish"];
