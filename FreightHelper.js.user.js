@@ -143,7 +143,7 @@ const FreightHelper = (function () {
       });
       randomButtons.each(function () {
         console.log("Pressing 'Random' button");
-        //$(this).click();
+        $(this).click();
       });
     }
 
