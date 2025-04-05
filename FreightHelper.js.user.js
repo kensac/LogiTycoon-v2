@@ -111,7 +111,7 @@ const FreightHelper = (function() {
         const availableText = $("div.portlet").filter(function() {
             return $(this).text().trim().toLowerCase().includes("available");
         });
-        if (availableText.length > 0) {
+        if (availableText.length > 1) {
             const randomButtons = $("button, a").filter(function() {
                 return $(this).text().trim().toLowerCase() === "random";
             });
