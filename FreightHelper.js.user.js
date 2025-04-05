@@ -125,11 +125,7 @@ const FreightHelper = (function () {
     const filteredStatusSelectors = Array.from(statusSelectors).filter(
       function () {
         const txt = $(this).text().trim().toLowerCase();
-        return (
-          txt.includes("available") ||
-          txt.includes("in progress") ||
-          txt.includes("finished")
-        );
+        return txt.includes("available");
       }
     );
     if (statusSelectors.length === 0) {
@@ -141,7 +137,7 @@ const FreightHelper = (function () {
       console.log(`Status ${index + 1}: ${selector.textContent.trim()}`);
     });
 
-    if (statusSelectors.length > 0) {
+    if (filteredStatusSelectors.length > 0) {
       const randomButtons = $("button, a").filter(function () {
         return $(this).text().trim().toLowerCase() === "random";
       });
