@@ -130,9 +130,14 @@ const FreightHelper = (function () {
         console.log(`Status ${index + 1}: ${selector.textContent.trim()}`);
       });
 
-        // Filter out status selectors that contain "available"
+        // Filter out status selectors that contain "1 available" or "2 available" up until "n available" but 0 will be excluded
+        const n = 2;
+        const availableRegex = new RegExp(`\\b${n}\\s+available\\b`, "i");
         const filteredStatusSelectors = Array.from(statusSelectors).filter(
-            (selector) => selector.textContent.trim().toLowerCase().includes("available")
+          (selector) => {
+            const text = selector.textContent.trim();
+            return !availableRegex.test(text);
+          }
         );
 
         console.log(filteredStatusSelectors);
