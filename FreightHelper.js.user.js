@@ -107,15 +107,19 @@ const FreightHelper = (function() {
      * one of "load", "drive", "unload", or "finish".
      */
     function pressFreightActionButtons() {
-        // first press all the random buttons
-        const randomButtons = $("button, a").filter(function() {
-            return $(this).text().trim().toLowerCase() === "random";
+        // press random only if the word available is present
+        const availableText = $("div.portlet").filter(function() {
+            return $(this).text().trim().toLowerCase().includes("available");
         });
-        randomButtons.each(function() {
-            console.log("Pressing 'Random' button");
-            $(this).click();
+        if (availableText.length > 0) {
+            const randomButtons = $("button, a").filter(function() {
+                return $(this).text().trim().toLowerCase() === "random";
+            });
+            randomButtons.each(function() {
+                console.log("Pressing 'Random' button");
+                $(this).click();
+            });
         }
-        );
 
         // Then, iterate over the list of actions.
         const actions = ["load", "drive", "unload", "finish"];
