@@ -118,7 +118,11 @@ const FreightHelper = (function () {
   function pressFreightActionButtons() {
     // press random only if the below labels do not contain "available"
     //querySelectorAll("div.row.static-info span.label");
-    const statusSelectors = $("div.row.static-info span.label").filter(
+    const statusSelectors = document.querySelectorAll(
+      "div.row.static-info span.label"
+    );
+    // Filter the status selectors to find those that contain "available", "in progress", or "finished".
+    const filteredStatusSelectors = Array.from(statusSelectors).filter(
       function () {
         const txt = $(this).text().trim().toLowerCase();
         return (
