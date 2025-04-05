@@ -62,8 +62,14 @@ const WarehouseHelper = (function() {
             const freight = {};
             const cells = Array.from(row.children);
             const idCell = cells.find(cell => cell.classList.contains("hidden-xs") && cell.textContent.trim().startsWith("#"));
+            // the freight id is in the tr element in the onclick attribute and looks like this: document.location = 'index.php?a=freight&n=70811580'; This is above the id cell which is td, we only want the number after the n=
             if (idCell) {
-                freight.id = idCell.textContent.trim().replace("#", "");
+                const onclickAttr = idCell.parentElement.getAttribute("onclick");
+                console.log("WarehouseHelper: Onclick attribute:", onclickAttr);
+                const idMatch = onclickAttr.match(/n=(\d+)/);
+                if (idMatch) {
+                    freight.id = idMatch[1];
+                }
             }
             if (cells[1]) {
                 let earningsText = cells[1].textContent.trim().replace(/[\$,]/g, "");
